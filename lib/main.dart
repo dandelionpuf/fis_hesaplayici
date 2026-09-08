@@ -109,6 +109,13 @@ class Receipt {
   double get totalAmount => items.fold(0.0, (sum, item) => sum + item.price);
 }
 
+String getMonthName(int month) {
+  const months = [
+    'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'
+  ];
+  return months[month - 1];
+}
+
 //ana ekran yonetimi
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({super.key});
@@ -123,11 +130,25 @@ class _MainShellScreenState extends State<MainShellScreen> {
   int _remainingDailyScans = 2;
   bool _isPremium = false;
   double _monthlyIncome = 25000.0; // varsayilan aylik gelir
+  double _savingsGoal = 5000.0; 
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   final List<Receipt> _receipts = []; // baslangicta sifir fis
 
   void _updateIncome(double newIncome) {
     setState(() {
       _monthlyIncome = newIncome;
+    });
+  }
+
+  void _updateSavings(double newSavings) {
+    setState(() {
+      _savingsGoal = newSavings;
+    });
+  }
+
+  void _changeMonth(DateTime newMonth) {
+    setState(() {
+      _selectedMonth = newMonth;
     });
   }
 
@@ -183,14 +204,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredReceipts = _receipts.where((r) {
+      return r.date.year == _selectedMonth.year && r.date.month == _selectedMonth.month;
+    }).toList();
     final List<Widget> pages = [
       DashboardScreen(
-        receipts: _receipts,
+        receipts: filteredReceipts,
         remainingScans: _remainingDailyScans,
         isPremium: _isPremium,
         monthlyIncome: _monthlyIncome,
+        savingsGoal: _savingsGoal,
         onUpdateIncome: _updateIncome,
+        onUpdateSavings: _updateSavings,
         onWatchAd: _watchRewardAd,
+        selectedMonth: _selectedMonth,
+        onMonthChanged: _changeMonth,
       ),
       ScanReceiptScreen(
         remainingScans: _remainingDailyScans,
@@ -258,6 +286,10 @@ class DashboardScreen extends StatelessWidget {
   final double monthlyIncome;
   final ValueChanged<double> onUpdateIncome;
   final VoidCallback onWatchAd;
+  final double  savingsGoal;
+  final ValueChanged<double> onUpdateSavings;
+  final DateTime selectedMonth;
+  final ValueChanged<DateTime> onMonthChanged;
 
   const DashboardScreen({
     super.key,
@@ -267,6 +299,10 @@ class DashboardScreen extends StatelessWidget {
     required this.monthlyIncome,
     required this.onUpdateIncome,
     required this.onWatchAd,
+    required this.savingsGoal,
+    required this.selectedMonth,
+    required this.onMonthChanged,
+    required this.onUpdateSavings,
   });
 
   double _categoryTotal(ExpenseCategory cat) {
@@ -282,18 +318,23 @@ class DashboardScreen extends StatelessWidget {
   double get _grandTotal => receipts.fold(0.0, (sum, r) => sum + r.totalAmount);
   double get _remainingBudget => monthlyIncome - _grandTotal;
 
-  void _showEditIncomeDialog(BuildContext context) {
-    final controller = TextEditingController(text: monthlyIncome.toStringAsFixed(0));
+  void _showEditNumberDialog({
+    required BuildContext context,
+    required String title,
+    required double currentValue,
+    required ValueChanged<double> onSave,
+  }) {
+    final controller = TextEditingController(text: currentValue.toStringAsFixed(0));
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Aylik Net Gelir', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
-            hintText: 'Orn: 30000',
+            hintText: 'Tutar gir',
             prefixText: '₺ ',
             border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
           ),
@@ -311,7 +352,7 @@ class DashboardScreen extends StatelessWidget {
             onPressed: () {
               final val = double.tryParse(controller.text);
               if (val != null && val >= 0) {
-                onUpdateIncome(val);
+                onSave(val);
               }
               Navigator.pop(ctx);
             },
@@ -367,6 +408,47 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 38,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 6,
+            itemBuilder: (ctx, index) {
+              final now = DateTime.now();
+              //son 6 ay siralamasi
+              final m = DateTime(now.year, now.month - (5 - index));
+              final isSelected = m.year == selectedMonth.year && m.month == selectedMonth.month;
+
+              return GestureDetector(
+                onTap: () => onMonthChanged(m),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Center(
+                    child: Text(
+                      '${getMonthName(m.month)} ${m.year}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : const Color(0xFF64748B),
+                      ),
+                    ),
+              ),
+                ),
+              );
+              
+            },
+          ),
         ),
 
         // Hak bitince cikan reklam bari
@@ -434,7 +516,12 @@ class DashboardScreen extends StatelessWidget {
                     ],
                   ),
                   GestureDetector(
-                    onTap: () => _showEditIncomeDialog(context),
+                    onTap: () => _showEditNumberDialog(
+                      context: context,
+                      title: 'Aylik net gelir',
+                      currentValue: monthlyIncome,
+                      onSave: onUpdateIncome,
+                    ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -482,6 +569,63 @@ class DashboardScreen extends StatelessWidget {
 
         const SizedBox(height: 14),
 
+        //birikim kismi
+       // 2. BIRIKIM (KUMBARA) BOLMESI
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF59E0B),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.savings_rounded, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Kenara Ayrilan Birikim',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '₺${savingsGoal.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFFB45309)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () => _showEditNumberDialog(
+                  context: context,
+                  title: 'Aylik Birikim Hedefin',
+                  currentValue: savingsGoal,
+                  onSave: onUpdateSavings,
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Degistir', style: TextStyle(color: Color(0xFFB45309), fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
         // toplam harcama karti
         Container(
           padding: const EdgeInsets.all(22),
