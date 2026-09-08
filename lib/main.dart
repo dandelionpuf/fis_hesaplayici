@@ -227,8 +227,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onWatchAd: _watchRewardAd,
       ),
       ReportsScreen(
-        receipts: _receipts,
+        receipts: filteredReceipts,
         monthlyIncome: _monthlyIncome,
+        savingGoal: _savingsGoal,
+        selectedMonth: _selectedMonth,
       ),
       SubscriptionScreen(
         isPremium: _isPremium,
@@ -290,6 +292,7 @@ class DashboardScreen extends StatelessWidget {
   final ValueChanged<double> onUpdateSavings;
   final DateTime selectedMonth;
   final ValueChanged<DateTime> onMonthChanged;
+ 
 
   const DashboardScreen({
     super.key,
@@ -303,6 +306,7 @@ class DashboardScreen extends StatelessWidget {
     required this.selectedMonth,
     required this.onMonthChanged,
     required this.onUpdateSavings,
+    
   });
 
   double _categoryTotal(ExpenseCategory cat) {
@@ -317,6 +321,114 @@ class DashboardScreen extends StatelessWidget {
 
   double get _grandTotal => receipts.fold(0.0, (sum, r) => sum + r.totalAmount);
   double get _remainingBudget => monthlyIncome - _grandTotal;
+
+  void _showReceiptDetail(BuildContext context, Receipt receipt) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 16,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      receipt.storeName,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${receipt.date.day}.${receipt.date.month}.${receipt.date.year}',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+                Text(
+                  '₺${receipt.totalAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+                ),
+                const Divider(height: 28),
+                const Text(
+                  'Alinan Urunler',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: receipt.items.length,
+                    separatorBuilder: (__, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, i) {
+                      final item = receipt.items[i];
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: item.category.bgColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(item.category.icon, size: 16, color: item.category.iconColor),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  Text(item.category.title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '₺${item.price.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ],
+        ),
+      )
+    );
+  }
 
   void _showEditNumberDialog({
     required BuildContext context,
@@ -737,14 +849,20 @@ class DashboardScreen extends StatelessWidget {
             ),
           )
         else
-          ...receipts.map((r) => Container(
+       ...receipts.map((r) => GestureDetector(
+              onTap: () => _showReceiptDetail(context, r),
+              child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
                   ],
                 ),
                 child: Row(
@@ -752,7 +870,10 @@ class DashboardScreen extends StatelessWidget {
                     Container(
                       width: 44,
                       height: 44,
-                      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(14)),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF475569)),
                     ),
                     const SizedBox(width: 14),
@@ -760,16 +881,26 @@ class DashboardScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(r.storeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B))),
+                          Text(
+                            r.storeName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B)),
+                          ),
                           const SizedBox(height: 2),
-                          Text('${r.items.length} parca • ${r.date.day}.${r.date.month}.${r.date.year}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text(
+                            '${r.items.length} parca • ${r.date.day}.${r.date.month}.${r.date.year}',
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
                         ],
                       ),
                     ),
-                    Text('₺${r.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B))),
+                    Text(
+                      '₺${r.totalAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B)),
+                    ),
                   ],
                 ),
-              )),
+              ),
+            )),
       ],
     );
   }
@@ -983,8 +1114,10 @@ class _ScanReceiptScreenState extends State<ScanReceiptScreen> {
 class ReportsScreen extends StatelessWidget {
   final List<Receipt> receipts;
   final double monthlyIncome;
+  final double savingGoal;
+  final DateTime selectedMonth;
 
-  const ReportsScreen({super.key, required this.receipts, required this.monthlyIncome});
+  const ReportsScreen({super.key, required this.receipts, required this.monthlyIncome, required this.savingGoal, required this.selectedMonth});
 
   double _categoryTotal(ExpenseCategory cat) {
     double sum = 0;
@@ -1011,8 +1144,20 @@ class ReportsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       children: [
         const Text('Harcama Pastasi ', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+        //secili ay rozeti
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE2E8F0),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            '${getMonthName(selectedMonth.month)} ${selectedMonth.year}',
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+          ),
+        ),
         const SizedBox(height: 4),
-        const Text('Paran nereye gitti, gelirinin ne kadarini harcadin?', style: TextStyle(color: Colors.grey, fontSize: 13)),
+        const Text('Paran nelere harcadin, gelirinin ne kadarini harcadin?', style: TextStyle(color: Colors.grey, fontSize: 13)),
         const SizedBox(height: 20),
 
         Container(
