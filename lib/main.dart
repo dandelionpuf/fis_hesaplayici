@@ -4,11 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
 import 'models/receipt.dart';
 import 'services/fis_servisi.dart';
+import 'services/ads_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await SupabaseService.initialize();
+  await AdsService.initialize();
 
   runApp(const FisHesaplayiciApp());
 }
@@ -20,7 +22,7 @@ class FisHesaplayiciApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Nereye Gitti?',
+      title: 'Ne Harcadık?',
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         colorScheme: ColorScheme.fromSeed(
@@ -200,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Nereye Gitti?',
+                'Ne Harcadık?',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
               ),
@@ -314,6 +316,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _loadAllData();
+    AdsService().preloadAd(); // İlk reklamı en baştan yüklemeye başla.
+  }
+
+  @override
+  void dispose() {
+    AdsService().dispose();
+    super.dispose();
   }
 
   Future<void> _loadAllData() async {
@@ -403,41 +412,36 @@ class _MainShellScreenState extends State<MainShellScreen> {
       return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            CircularProgressIndicator(color: Colors.amber),
-            SizedBox(height: 18),
-            Text('Reklam aciliyor...', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 6),
-            Text('Lutfen bekleyin hakkiniz tanimlaniyor', style: TextStyle(color: Colors.grey, fontSize: 12)),
-          ],
-        ),
-      ),
+    AdsService().showRewardedAd(
+      onReward: () {
+        // Kullanıcı reklamı sonuna kadar izledi — hakkı şimdi ver.
+        if (!mounted) return;
+        setState(() {
+          _remainingDailyScans += 1;
+          _adBonusEarnedToday += 1;
+        });
+        final kalan = 2 - _adBonusEarnedToday;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(kalan > 0
+                ? 'Kaptin +1 hakki! 🎉 (Bugün için $kalan reklam hakkın daha kaldı)'
+                : 'Kaptin +1 hakki! 🎉 Bugünlük reklam hakların bitti.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      onAdNotReady: () {
+        // Reklam henüz yüklenmediyse (yavaş internet, ilk açılış vb.)
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reklam hazırlanıyor, birkaç saniye sonra tekrar dene.'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
     );
-
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      setState(() {
-        _remainingDailyScans += 1;
-        _adBonusEarnedToday += 1;
-      });
-      final kalan = 2 - _adBonusEarnedToday;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(kalan > 0
-              ? 'Kaptin +1 hakki! 🎉 (Bugün için $kalan reklam hakkın daha kaldı)'
-              : 'Kaptin +1 hakki! 🎉 Bugünlük reklam hakların bitti.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    });
   }
 
   void _togglePremium(bool value) {
@@ -2131,4 +2135,4 @@ class SubscriptionScreen extends StatelessWidget {
   }
 }
 
-//am
+// Got Sikici Efecan
