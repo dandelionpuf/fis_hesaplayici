@@ -10,7 +10,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await SupabaseService.initialize();
-  await AdsService.initialize();
+
+  // Reklam SDK'sında bir sorun olsa bile (ör. AndroidManifest'te App ID
+  // eksik/yanlış) tüm uygulama açılışta çökmesin diye ayrı yakalıyoruz.
+  try {
+    await AdsService.initialize();
+  } catch (e) {
+    debugPrint('AdsService başlatılamadı (uygulama yine de açılacak): $e');
+  }
 
   runApp(const FisHesaplayiciApp());
 }
@@ -22,7 +29,7 @@ class FisHesaplayiciApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Ne Harcadık?',
+      title: 'Nereye Gitti?',
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         colorScheme: ColorScheme.fromSeed(
@@ -202,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Ne Harcadık?',
+                'Nereye Gitti?',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
               ),
@@ -316,7 +323,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _loadAllData();
-    AdsService().preloadAd(); // İlk reklamı en baştan yüklemeye başla.
+    try {
+      AdsService().preloadAd(); // İlk reklamı en baştan yüklemeye başla.
+    } catch (e) {
+      debugPrint('İlk reklam yüklenemedi: $e');
+    }
   }
 
   @override
@@ -751,7 +762,7 @@ class DashboardScreen extends StatelessWidget {
               children: const [
                 Text('Selam :)', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500)),
                 SizedBox(height: 2),
-                Text('Ne Harcadik?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                Text('Nereye Gitti?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
               ],
             ),
             Row(
@@ -2134,5 +2145,3 @@ class SubscriptionScreen extends StatelessWidget {
     );
   }
 }
-
-// Got Sikici Efecan

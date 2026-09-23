@@ -20,7 +20,7 @@ const String _iosTestRewardedId = 'ca-app-pub-3940256099942544/1712485313';
 // yukarıdaki satırlar yerine bunları kullan (aşağıdaki getter'lar otomatik
 // olarak gerçek ID boşsa test ID'sine düşer, yani hemen doldurmasan da kod
 // çalışmaya devam eder).
-const String _androidRealRewardedId = 'ca-app-pub-9125013882382987/9335513628';
+const String _androidRealRewardedId = '';
 const String _iosRealRewardedId = ''; // ör: 'ca-app-pub-1234567890123456/0987654321'
 
 String get _rewardedAdUnitId {
