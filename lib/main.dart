@@ -5,6 +5,7 @@ import 'dart:math';
 import 'models/receipt.dart';
 import 'services/fis_servisi.dart';
 import 'services/ads_service.dart';
+import 'account_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,23 +23,45 @@ void main() async {
   runApp(const FisHesaplayiciApp());
 }
 
+// Tum uygulamada temayi kontrol eden degisken
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+
 class FisHesaplayiciApp extends StatelessWidget {
   const FisHesaplayiciApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Nereye Gitti?',
-      theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2E7D32),
-          primary: const Color(0xFF1E293B),
-        ),
-        useMaterial3: true,
-      ),
-      home: const MobileFrame(child: AuthGate()),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, currentMode, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Nereye Gitti?',
+          themeMode: currentMode,
+          // Acik Tema
+          theme: ThemeData(
+            brightness: Brightness.light,
+            scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF2E7D32),
+              primary: const Color(0xFF1E293B),
+              brightness: Brightness.light,
+            ),
+            useMaterial3: true,
+          ),
+          // Koyu Tema
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: const Color(0xFF0F172A),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF2E7D32),
+              brightness: Brightness.dark,
+            ),
+            useMaterial3: true,
+          ),
+          home: const MobileFrame(child: AuthGate()),
+        );
+      },
     );
   }
 }
@@ -580,6 +603,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onTogglePremium: _togglePremium,
         onWatchAd: _watchRewardAd,
       ),
+     AccountScreen(
+        isDarkMode: themeNotifier.value == ThemeMode.dark,
+        onThemeChanged: (isDark) {
+          themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+        },
+      ),
     ];
 
     return Scaffold(
@@ -616,6 +645,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.pie_chart_outline), activeIcon: Icon(Icons.pie_chart), label: 'Grafik'),
             BottomNavigationBarItem(icon: Icon(Icons.savings_outlined), activeIcon: Icon(Icons.savings), label: 'Birikim'),
             BottomNavigationBarItem(icon: Icon(Icons.workspace_premium_outlined), activeIcon: Icon(Icons.workspace_premium), label: 'Abonelik'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), activeIcon: Icon(Icons.person_rounded), label: 'Hesabim'),
           ],
         ),
       ),
